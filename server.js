@@ -9,6 +9,15 @@ const DB_FILE = path.join(__dirname, 'database.json');
 // Serve static files
 app.use(express.static('public'));
 
+// Disable caching for API responses to avoid stale data in the UI
+app.use('/api', (req, res, next) => {
+    res.set('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+    res.set('Pragma', 'no-cache');
+    res.set('Expires', '0');
+    res.set('Surrogate-Control', 'no-store');
+    next();
+});
+
 // Helper: Parse Caddyfile and Save to DB
 function parseAndSaveCaddyfile() {
     return new Promise((resolve, reject) => {

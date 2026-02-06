@@ -1,5 +1,3 @@
-version: '3.8'
-
 services:
   caddy-dash:
     image: ghcr.io/adrianmihalko/caddy-term-dash:latest

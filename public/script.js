@@ -11,7 +11,21 @@ document.addEventListener('DOMContentLoaded', () => {
     let isPrivacyMode = false;
     let fuse = null; // Fuse instance
 
-    const COMMANDS = ['refresh', 'help', 'clear', 'privacy', 'ping', '?'];
+    const COMMANDS = ['refresh', 'help', 'clear', 'privacy', 'ping', 'screensaver', '?'];
+
+    const DEFAULT_SCREENSAVER_TIMEOUT_MS = 60000;
+    const SCREENSAVER_MIN_MS = 5000;
+    const SCREENSAVER_MAX_MS = 60 * 60 * 1000;
+    const SCREENSAVER_SEED_PHASE_MS = 5000;
+    const SCREENSAVER_STORAGE_KEY = 'screensaverTimeoutMs';
+
+    const screensaverCanvas = document.getElementById('screensaver');
+    let screensaverTimeoutMs = DEFAULT_SCREENSAVER_TIMEOUT_MS;
+    let screensaverTimer = null;
+    let screensaverActive = false;
+    let screensaverRaf = null;
+    let matrixState = null;
+    let lastActivityAt = 0;
 
     function printHeader(text, className = '') {
         const div = document.createElement('div');
@@ -112,6 +126,7 @@ document.addEventListener('DOMContentLoaded', () => {
         <span style="color:#fff">refresh</span>  - Reload Caddyfile from disk
         <span style="color:#fff">ping</span>     - Check status of all services
         <span style="color:#fff">privacy</span>  - Toggle privacy mode (hide domains)
+        <span style="color:#fff">screensaver</span> - Set timeout in seconds (e.g. screensaver 90)
         <span style="color:#fff">clear</span>    - Clear terminal history
         <span style="color:#fff">help / ?</span>  - Show this menu
         <br><br><span style="color:#fff">HOTKEYS:</span>
@@ -119,6 +134,154 @@ document.addEventListener('DOMContentLoaded', () => {
         <span style="color:#fff">Enter</span>    - Open Service or Run Command
         </div>
         `);
+    }
+
+    function loadScreensaverTimeout() {
+        const raw = localStorage.getItem(SCREENSAVER_STORAGE_KEY);
+        const parsed = raw ? parseInt(raw, 10) : NaN;
+        if (!Number.isNaN(parsed)) {
+            screensaverTimeoutMs = Math.min(SCREENSAVER_MAX_MS, Math.max(SCREENSAVER_MIN_MS, parsed));
+        }
+    }
+
+    function saveScreensaverTimeout(ms) {
+        screensaverTimeoutMs = Math.min(SCREENSAVER_MAX_MS, Math.max(SCREENSAVER_MIN_MS, ms));
+        localStorage.setItem(SCREENSAVER_STORAGE_KEY, String(screensaverTimeoutMs));
+        scheduleScreensaver();
+    }
+
+    function scheduleScreensaver() {
+        if (screensaverTimer) clearTimeout(screensaverTimer);
+        screensaverTimer = setTimeout(startScreensaver, screensaverTimeoutMs);
+    }
+
+    function recordActivity() {
+        const now = Date.now();
+        if (now - lastActivityAt < 200) return;
+        lastActivityAt = now;
+        if (screensaverActive) {
+            stopScreensaver();
+        }
+        scheduleScreensaver();
+    }
+
+    function startScreensaver() {
+        if (screensaverActive) return;
+        screensaverActive = true;
+        document.body.classList.add('screensaver-active');
+        initMatrix();
+        animateMatrix();
+    }
+
+    function stopScreensaver() {
+        if (!screensaverActive) return;
+        screensaverActive = false;
+        document.body.classList.remove('screensaver-active');
+        if (screensaverRaf) cancelAnimationFrame(screensaverRaf);
+        screensaverRaf = null;
+        if (matrixState && matrixState.ctx) {
+            matrixState.ctx.clearRect(0, 0, matrixState.width, matrixState.height);
+        }
+        matrixState = null;
+    }
+
+    function getSeedCharacters() {
+        const text = document.querySelector('.terminal').innerText || '';
+        const chars = [];
+        for (let i = 0; i < text.length; i++) {
+            const ch = text[i];
+            if (/[\x21-\x7E]/.test(ch)) chars.push(ch);
+        }
+        const unique = Array.from(new Set(chars));
+        if (unique.length < 20) {
+            return Array.from('CADDYTERM0123456789@#$%&*');
+        }
+        return unique;
+    }
+
+    function initMatrix() {
+        const dpr = window.devicePixelRatio || 1;
+        screensaverCanvas.width = Math.floor(window.innerWidth * dpr);
+        screensaverCanvas.height = Math.floor(window.innerHeight * dpr);
+        screensaverCanvas.style.width = `${window.innerWidth}px`;
+        screensaverCanvas.style.height = `${window.innerHeight}px`;
+
+        const ctx = screensaverCanvas.getContext('2d');
+        ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+
+        const fontSize = Math.max(14, Math.min(20, Math.floor(window.innerWidth / 80)));
+        const cols = Math.floor(window.innerWidth / fontSize);
+        const drops = [];
+        const speeds = [];
+        for (let i = 0; i < cols; i++) {
+            drops[i] = Math.random() * (window.innerHeight / fontSize);
+            speeds[i] = 0.6 + Math.random() * 0.9;
+        }
+
+        matrixState = {
+            ctx,
+            width: window.innerWidth,
+            height: window.innerHeight,
+            fontSize,
+            cols,
+            drops,
+            speeds,
+            seedChars: getSeedCharacters(),
+            fullChars: Array.from('ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789@#$%&*+-/<>'),
+            phaseStart: performance.now()
+        };
+    }
+
+    function animateMatrix() {
+        if (!screensaverActive || !matrixState) return;
+        const { ctx, width, height, fontSize, cols, drops, speeds, seedChars, fullChars, phaseStart } = matrixState;
+        const elapsed = performance.now() - phaseStart;
+        const chars = elapsed < SCREENSAVER_SEED_PHASE_MS ? seedChars : fullChars;
+
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.2)';
+        ctx.fillRect(0, 0, width, height);
+        ctx.fillStyle = '#00ff00';
+        ctx.font = `${fontSize}px VT323, monospace`;
+
+        for (let i = 0; i < cols; i++) {
+            const text = chars[Math.floor(Math.random() * chars.length)];
+            const x = i * fontSize;
+            const y = drops[i] * fontSize;
+            ctx.fillText(text, x, y);
+
+            if (y > height && Math.random() > 0.975) {
+                drops[i] = 0;
+            }
+            drops[i] += speeds[i];
+        }
+
+        screensaverRaf = requestAnimationFrame(animateMatrix);
+    }
+
+    function handleScreensaverCommand(rawInput) {
+        const parts = rawInput.trim().split(/\s+/);
+        if (parts.length < 2) {
+            const current = Math.round(screensaverTimeoutMs / 1000);
+            printResult(
+                `<div class="label">Screensaver timeout: <span style="color:#fff">${current}s</span>` +
+                `<br>Usage: screensaver [seconds] or screensaver now</div>`
+            );
+            return;
+        }
+        const arg = parts[1].toLowerCase();
+        if (arg === 'now' || arg === 'on') {
+            startScreensaver();
+            printResult('<div class="label">Screensaver started. Move mouse or press a key to exit.</div>');
+            return;
+        }
+        const seconds = parseFloat(arg);
+        if (!Number.isFinite(seconds) || seconds <= 0) {
+            printResult('<div class="error">Invalid timeout. Use seconds, e.g. screensaver 90</div>');
+            return;
+        }
+        const ms = Math.round(seconds * 1000);
+        saveScreensaverTimeout(ms);
+        printResult(`<div class="label">Screensaver timeout set to <span style="color:#fff">${Math.round(screensaverTimeoutMs / 1000)}s</span></div>`);
     }
 
     input.addEventListener('input', (e) => {
@@ -178,7 +341,8 @@ document.addEventListener('DOMContentLoaded', () => {
             selectedIndex--;
             updateSelection();
         } else if (e.key === 'Enter') {
-            const val = input.value.trim().toLowerCase();
+            const rawInput = input.value.trim();
+            const val = rawInput.toLowerCase();
             
             // Check if we have a selected item from the list (Command or Service)
             if (filteredServices.length > 0 && selectedIndex >= 0 && selectedIndex < filteredServices.length) {
@@ -216,6 +380,9 @@ document.addEventListener('DOMContentLoaded', () => {
                     } else if (cmdToRun === 'privacy') {
                         isPrivacyMode = !isPrivacyMode;
                         printResult(`<div class="label">Privacy Mode: <span style="color:#fff">${isPrivacyMode ? 'ON' : 'OFF'}</span></div>`);
+                        return;
+                    } else if (cmdToRun === 'screensaver') {
+                        handleScreensaverCommand(rawInput);
                         return;
                     } else if (cmdToRun.startsWith('add ')) {
                          // add domain target
@@ -319,9 +486,8 @@ document.addEventListener('DOMContentLoaded', () => {
                         renderServices(services);
                     }
                 }
-            } else if (val === 'refresh') {
-                // Fallback for exact typing if list is empty for some reason, though logic above covers it
-                 // ... (Optional redundancy)
+            } else if (val.startsWith('screensaver')) {
+                handleScreensaverCommand(rawInput);
             }
         }
     });
@@ -341,5 +507,15 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
+    ['mousemove', 'mousedown', 'keydown', 'touchstart', 'wheel'].forEach(evt => {
+        document.addEventListener(evt, recordActivity, { passive: true });
+    });
+
+    window.addEventListener('resize', () => {
+        if (screensaverActive) initMatrix();
+    });
+
     init();
+    loadScreensaverTimeout();
+    scheduleScreensaver();
 });

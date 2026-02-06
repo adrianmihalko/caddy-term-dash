@@ -160,6 +160,27 @@ body {
     animation: scroll 10s linear infinite;
 }
 
+/* Screensaver */
+#screensaver {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    display: none;
+    z-index: 5;
+    background: rgba(0, 0, 0, 0.9);
+}
+
+body.screensaver-active #screensaver {
+    display: block;
+}
+
+body.screensaver-active .terminal {
+    opacity: 0;
+    pointer-events: none;
+}
+
 /* Subtle CRT Flicker */
 @keyframes flicker {
     0% { opacity: 0.97; }
