@@ -283,25 +283,23 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function animateMatrix() {
         if (!screensaverActive || !matrixState) return;
-        const { ctx, width, height, glyphs, floors, lineHeight, fontSize } = matrixState;
+        const { ctx, width, height, glyphs, lineHeight, fontSize } = matrixState;
 
         ctx.clearRect(0, 0, width, height);
         ctx.font = `${fontSize}px VT323, monospace`;
 
-        // Trigger drops
-        const dropsPerFrame = Math.max(1, Math.round(2 * screensaverSpeed));
+        // Trigger drops - More aggressive now
+        const dropsPerFrame = Math.max(1, Math.round(5 * screensaverSpeed));
         const idleGlyphs = glyphs.filter(g => g.state === 'idle');
 
         if (idleGlyphs.length > 0) {
-            for (let i = 0; i < dropsPerFrame; i++) {
-                if (Math.random() < 0.5) {
-                    const idx = Math.floor(Math.random() * idleGlyphs.length);
-                    const g = idleGlyphs[idx];
-                    g.state = 'falling';
-                    g.vy = (2 + Math.random() * 3) * screensaverSpeed;
-                    idleGlyphs.splice(idx, 1);
-                    if (idleGlyphs.length === 0) break;
-                }
+            const count = Math.min(dropsPerFrame, idleGlyphs.length);
+            for (let i = 0; i < count; i++) {
+                const idx = Math.floor(Math.random() * idleGlyphs.length);
+                const g = idleGlyphs[idx];
+                g.state = 'falling';
+                g.vy = (3 + Math.random() * 4) * screensaverSpeed; // Slightly faster fall
+                idleGlyphs.splice(idx, 1);
             }
         }
 
@@ -314,14 +312,11 @@ document.addEventListener('DOMContentLoaded', () => {
                 g.y += g.vy;
                 g.vy += 0.2 * screensaverSpeed;
 
-                const col = Math.round(g.x);
-                const currentFloor = floors[col] !== undefined ? floors[col] : height;
-
-                if (g.y + lineHeight >= currentFloor) {
-                    g.y = currentFloor - lineHeight;
+                // Land at the bottom of the screen (no piling/stacking)
+                if (g.y >= height - lineHeight) {
+                    g.y = height - lineHeight;
                     g.state = 'landed';
                     g.vy = 0;
-                    floors[col] = g.y;
                 }
                 ctx.fillStyle = '#00ff00';
             } else if (g.state === 'landed') {
