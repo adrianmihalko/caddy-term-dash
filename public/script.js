@@ -305,53 +305,75 @@ document.addEventListener('DOMContentLoaded', () => {
 
         const ctx = screensaverCanvas.getContext('2d');
         ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+        ctx.textBaseline = 'top';
 
-        const fontSize = Math.max(14, Math.min(20, Math.floor(window.innerWidth / 80)));
-        const cols = Math.floor(window.innerWidth / fontSize);
         const seedGlyphs = buildSeedGlyphs(ctx);
+        const { glyphs, fontSize, lineHeight } = seedGlyphs;
+
+        // Reset glyphs for Cascade
+        glyphs.forEach(g => {
+            g.state = 'idle';
+            g.vy = 0;
+        });
 
         matrixState = {
             ctx,
             width: window.innerWidth,
             height: window.innerHeight,
             fontSize,
-            cols,
-            seedChars: getSeedCharacters(),
-            seedGlyphs,
-            phaseStart: performance.now(),
-            lastSeedAt: performance.now()
+            lineHeight,
+            glyphs,
+            floors: {},
         };
     }
 
     function animateMatrix() {
         if (!screensaverActive || !matrixState) return;
-        const { ctx, width, height, seedGlyphs } = matrixState;
+        const { ctx, width, height, glyphs, floors, lineHeight, fontSize } = matrixState;
 
-        ctx.fillStyle = 'rgba(0, 0, 0, 0.2)';
-        ctx.fillRect(0, 0, width, height);
+        ctx.clearRect(0, 0, width, height);
+        ctx.font = `${fontSize}px VT323, monospace`;
 
-        if (seedGlyphs && seedGlyphs.glyphs.length > 0) {
-            ctx.fillStyle = '#00aa00';
-            ctx.font = `${seedGlyphs.fontSize}px VT323, monospace`;
-            const { glyphs, rect, lineHeight } = seedGlyphs;
-            let activeCount = 0;
-            for (let i = 0; i < glyphs.length; i++) {
-                const g = glyphs[i];
-                if (g.dead) continue;
-                ctx.fillText(g.ch, g.x, g.y);
-                g.y += g.vy;
-                if (g.y > height + 20) {
-                    g.dead = true;
-                } else {
-                    activeCount++;
+        // Trigger drops
+        const dropsPerFrame = Math.max(1, Math.round(2 * screensaverSpeed));
+        const idleGlyphs = glyphs.filter(g => g.state === 'idle');
+
+        if (idleGlyphs.length > 0) {
+            for (let i = 0; i < dropsPerFrame; i++) {
+                if (Math.random() < 0.5) {
+                    const idx = Math.floor(Math.random() * idleGlyphs.length);
+                    const g = idleGlyphs[idx];
+                    g.state = 'falling';
+                    g.vy = (2 + Math.random() * 3) * screensaverSpeed;
+                    idleGlyphs.splice(idx, 1);
+                    if (idleGlyphs.length === 0) break;
                 }
             }
+        }
 
-            // Once everything has fallen off, re-seed from current screen
-            if (activeCount === 0 && performance.now() - matrixState.lastSeedAt > 500) {
-                matrixState.seedGlyphs = buildSeedGlyphs(ctx);
-                matrixState.lastSeedAt = performance.now();
+        for (let i = 0; i < glyphs.length; i++) {
+            const g = glyphs[i];
+
+            if (g.state === 'idle') {
+                ctx.fillStyle = '#00ff00';
+            } else if (g.state === 'falling') {
+                g.y += g.vy;
+                g.vy += 0.2 * screensaverSpeed;
+
+                const col = Math.round(g.x);
+                const currentFloor = floors[col] !== undefined ? floors[col] : height;
+
+                if (g.y + lineHeight >= currentFloor) {
+                    g.y = currentFloor - lineHeight;
+                    g.state = 'landed';
+                    g.vy = 0;
+                    floors[col] = g.y;
+                }
+                ctx.fillStyle = '#00ff00';
+            } else if (g.state === 'landed') {
+                ctx.fillStyle = '#00aa00';
             }
+            ctx.fillText(g.ch, g.x, g.y);
         }
 
         screensaverRaf = requestAnimationFrame(animateMatrix);
