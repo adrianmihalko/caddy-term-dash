@@ -1,0 +1,25 @@
+# Node.js
+node_modules/
+npm-debug.log
+yarn-error.log
+
+# Local Runtime Data
+database.json
+
+# Caddy Configuration & Backups
+Caddyfile
+Caddyfile.bak
+Caddyfile_complex
+
+# Environment Variables
+.env
+
+# System Files
+.DS_Store
+Thumbs.db
+
+# Editor/IDE
+.vscode/
+.idea/
+*.swp
+*.swo

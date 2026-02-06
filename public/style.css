@@ -1,0 +1,292 @@
+@import url('https://fonts.googleapis.com/css2?family=VT323&display=swap');
+
+:root {
+    --term-color: #00ff00;
+    --term-dim: #008f00;
+    --term-bg: #0a0a0a;
+    --term-glow: 0 0 10px rgba(0, 255, 0, 0.7);
+    --term-highlight-bg: rgba(0, 255, 0, 0.2);
+    --term-hint: #004400;
+}
+
+body {
+    background-color: var(--term-bg);
+    color: var(--term-color);
+    font-family: 'VT323', monospace;
+    margin: 0;
+    padding: 0;
+    height: 100vh;
+    overflow: hidden;
+    font-size: 1.5rem;
+}
+
+.terminal {
+    padding: 2rem;
+    position: relative;
+    z-index: 1;
+    height: 100%;
+    overflow-y: auto;
+    scrollbar-width: none; /* Firefox */
+    display: flex;
+    flex-direction: column;
+}
+
+.terminal::-webkit-scrollbar {
+    display: none; /* Chrome/Safari */
+}
+
+/* Service List Items */
+.service-item {
+    display: flex;
+    align-items: center;
+    padding: 2px 0;
+    opacity: 0;
+    animation: fadeIn 0.1s forwards;
+}
+
+.service-item.selected {
+    background-color: var(--term-highlight-bg);
+    font-weight: bold;
+}
+
+.service-item.selected .prompt-char {
+    opacity: 1;
+}
+
+.prompt-char {
+    margin-right: 10px;
+    opacity: 0; /* Hidden unless selected */
+}
+
+.service-name {
+    min-width: 200px;
+    color: var(--term-color);
+}
+
+.domain-wrapper {
+    margin-left: 20px;
+    display: flex;
+    gap: 15px; /* Space between multiple domains */
+}
+
+.service-url {
+    color: var(--term-dim);
+    text-decoration: none;
+    border-bottom: 1px dashed var(--term-dim);
+}
+
+.service-url:hover {
+    color: var(--term-color);
+    border-bottom-color: var(--term-color);
+}
+
+.service-meta {
+    margin-left: auto;
+    color: var(--term-dim);
+    font-size: 0.9em;
+}
+
+.service-item.command .service-name {
+    color: #ffff00; /* Yellow for commands */
+}
+
+.service-item.command .service-meta {
+    color: #aaaa00;
+}
+
+/* Input Area */
+.input-line {
+    display: flex;
+    align-items: center;
+    margin-bottom: 1rem;
+    border-bottom: 1px dashed var(--term-dim);
+    padding-bottom: 0.5rem;
+}
+
+.input-wrapper {
+    position: relative;
+    flex-grow: 1;
+    display: flex;
+    align-items: center;
+}
+
+#command-input {
+    background: transparent;
+    border: none;
+    color: var(--term-color);
+    font-family: 'VT323', monospace;
+    font-size: 1.5rem;
+    outline: none;
+    width: 100%;
+    text-transform: lowercase;
+    caret-color: var(--term-color);
+    margin-left: 10px;
+    position: relative;
+    z-index: 2;
+}
+
+.command-hint {
+    position: absolute;
+    left: 10px; /* Match input margin-left */
+    color: var(--term-hint);
+    pointer-events: none;
+    z-index: 1;
+    white-space: pre;
+    font-size: 1.5rem;
+    text-transform: lowercase;
+}
+
+.result-output {
+    padding: 1rem 0;
+}
+
+/* CRT Scanline Effect */
+.scanlines {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    background: linear-gradient(
+        to bottom,
+        rgba(255,255,255,0),
+        rgba(255,255,255,0) 50%,
+        rgba(0,0,0,0.2) 50%,
+        rgba(0,0,0,0.2)
+    );
+    background-size: 100% 4px;
+    z-index: 10;
+    pointer-events: none;
+    animation: scroll 10s linear infinite;
+}
+
+/* Subtle CRT Flicker */
+@keyframes flicker {
+    0% { opacity: 0.97; }
+    5% { opacity: 0.95; }
+    10% { opacity: 0.9; }
+    15% { opacity: 0.95; }
+    20% { opacity: 0.99; }
+    50% { opacity: 0.95; }
+    80% { opacity: 0.9; }
+    100% { opacity: 0.97; }
+}
+
+body::after {
+    content: " ";
+    display: block;
+    position: absolute;
+    top: 0;
+    left: 0;
+    bottom: 0;
+    right: 0;
+    background: rgba(18, 16, 16, 0.1);
+    opacity: 0;
+    z-index: 2;
+    pointer-events: none;
+    animation: flicker 0.15s infinite;
+}
+
+/* Text Glow */
+.glow {
+    text-shadow: var(--term-glow);
+}
+
+.ascii-art {
+    white-space: pre;
+    line-height: 1.1;
+    margin-bottom: 2rem;
+    font-weight: bold;
+}
+
+.label {
+    opacity: 0.7;
+    margin-bottom: 0.5rem;
+    display: block;
+}
+
+.prompt {
+    color: var(--term-color);
+    margin-right: 0.5rem;
+    white-space: nowrap;
+}
+
+.error {
+    color: #ff3333;
+    font-weight: bold;
+}
+
+@keyframes fadeIn {
+    to { opacity: 1; }
+}
+
+/* Mobile Responsiveness */
+@media (max-width: 768px) {
+    body {
+        font-size: 1.4rem; /* Larger text for mobile */
+    }
+
+    .terminal {
+        padding: 0.5rem; /* Less padding */
+    }
+
+    .ascii-art {
+        font-size: 0.8rem; /* Shrink ASCII art if present */
+        white-space: pre-wrap; /* Wrap if needed */
+    }
+
+    /* Stack the service item details */
+    .service-item {
+        flex-wrap: wrap;
+        padding: 0.5rem 0;
+        border-bottom: 1px solid rgba(0, 255, 0, 0.1);
+    }
+
+    .prompt-char {
+        /* Keep prompt char on the first line with name */
+    }
+
+    .service-name {
+        min-width: 0; /* Remove fixed width */
+        flex-grow: 1; /* Take available space */
+        font-weight: bold;
+    }
+
+    .domain-wrapper {
+        margin-left: 0;
+        padding-left: 1.5rem; /* Indent below prompt */
+        width: 100%; /* New line */
+        margin-top: 0.2rem;
+        flex-wrap: wrap;
+        gap: 10px;
+    }
+
+    .service-meta {
+        /* Move meta (IP/Port) to its own line or hide if too cluttered */
+        /* Let's make it small and on a new line */
+        width: 100%;
+        margin-left: 0;
+        padding-left: 1.5rem;
+        font-size: 0.9em; /* Slightly bigger meta */
+        opacity: 0.6;
+        margin-top: 0.1rem;
+    }
+
+    .input-line {
+        flex-wrap: wrap;
+    }
+    
+    .prompt {
+        width: 100%;
+        margin-bottom: 0.5rem;
+    }
+
+    #command-input, .command-hint {
+        margin-left: 0;
+        font-size: 1.4rem;
+    }
+    
+    .command-hint {
+        left: 0;
+    }
+}

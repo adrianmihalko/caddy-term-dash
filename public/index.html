@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Caddy Term Dash</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="scanlines"></div>
+    <div class="terminal">
+        <div id="header-output"></div>
+        <div class="input-line">
+            <span class="prompt">root@caddy:~$</span>
+            <div class="input-wrapper">
+                <input type="text" id="command-input" autofocus autocomplete="off" spellcheck="false" placeholder="type to filter or command...">
+                <span id="command-hint" class="command-hint"></span>
+            </div>
+        </div>
+        <div id="service-list"></div>
+    </div>
+    <script src="https://cdn.jsdelivr.net/npm/fuse.js@6.6.2"></script>
+    <script src="script.js"></script>
+</body>
+</html>
