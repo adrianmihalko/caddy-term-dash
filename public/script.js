@@ -202,98 +202,52 @@ document.addEventListener('DOMContentLoaded', () => {
         matrixState = null;
     }
 
-    function getSeedCharacters() {
-        const text = document.querySelector('.terminal').innerText || '';
-        const chars = [];
-        for (let i = 0; i < text.length; i++) {
-            const ch = text[i];
-            if (/[\x21-\x7E]/.test(ch)) chars.push(ch);
-        }
-        const unique = Array.from(new Set(chars));
-        if (unique.length < 20) {
-            return Array.from('CADDYTERM0123.:/-');
-        }
-        return unique;
-    }
-
     function buildSeedGlyphs(ctx) {
         const terminal = document.querySelector('.terminal');
         if (!terminal) return null;
 
-        const rect = terminal.getBoundingClientRect();
-        const style = window.getComputedStyle(terminal);
-        const fontSize = Math.max(12, parseFloat(style.fontSize) || 16);
-        let lineHeight = parseFloat(style.lineHeight);
-        if (Number.isNaN(lineHeight)) lineHeight = Math.round(fontSize * 1.2);
-        lineHeight = Math.max(lineHeight, Math.round(fontSize * 1.1));
-
-        ctx.font = `${fontSize}px VT323, monospace`;
-        ctx.textBaseline = 'top';
-
-        let seedLayer = document.getElementById('screensaver-seed');
-        if (!seedLayer) {
-            seedLayer = document.createElement('div');
-            seedLayer.id = 'screensaver-seed';
-            document.body.appendChild(seedLayer);
-        }
-
-        seedLayer.style.left = `${rect.left}px`;
-        seedLayer.style.top = `${rect.top}px`;
-        seedLayer.style.width = `${rect.width}px`;
-        seedLayer.style.height = `${rect.height}px`;
-        seedLayer.style.fontFamily = 'VT323, monospace';
-        seedLayer.style.fontSize = `${fontSize}px`;
-        seedLayer.style.lineHeight = `${lineHeight}px`;
-
-        const lines = terminal.innerText.split('\n');
-        const frag = document.createDocumentFragment();
-        for (let r = 0; r < lines.length; r++) {
-            const line = lines[r] || '';
-            for (let c = 0; c < line.length; c++) {
-                const span = document.createElement('span');
-                const ch = line[c];
-                span.textContent = ch === ' ' ? '\u00A0' : ch;
-                frag.appendChild(span);
-            }
-            if (r < lines.length - 1) {
-                frag.appendChild(document.createElement('br'));
-            }
-        }
-        seedLayer.innerHTML = '';
-        seedLayer.appendChild(frag);
-
         const glyphs = [];
-        const spans = seedLayer.querySelectorAll('span');
-        const maxGlyphs = 2500;
-        for (let i = 0; i < spans.length; i++) {
-            const span = spans[i];
-            const ch = span.textContent;
-            if (!/[\x21-\x7E]/.test(ch)) continue;
-            const r = span.getBoundingClientRect();
-            if (r.width === 0 || r.height === 0) continue;
-            glyphs.push({
-                ch,
-                x: r.left,
-                y: r.top,
-                vy: (0.5 + Math.random() * 1.2) * screensaverSpeed
-            });
-            if (glyphs.length >= maxGlyphs) break;
+        const walker = document.createTreeWalker(terminal, NodeFilter.SHOW_TEXT, null, false);
+        
+        let node;
+        while(node = walker.nextNode()) {
+             // Skip empty or whitespace-only nodes if desired, 
+             // but sometimes we want to preserve spacing structure if we were rebuilding, 
+             // but here we just want visible chars.
+             const str = node.textContent;
+             if (!str.trim()) continue; 
+
+             for (let i = 0; i < str.length; i++) {
+                 const ch = str[i];
+                 if (ch === ' ' || ch === '\n' || ch === '\t') continue;
+
+                 const range = document.createRange();
+                 range.setStart(node, i);
+                 range.setEnd(node, i + 1);
+                 const rects = range.getClientRects();
+
+                 if (rects.length > 0) {
+                     const rect = rects[0];
+                     // Check visibility
+                     if (rect.width > 0 && rect.height > 0) {
+                         glyphs.push({
+                             ch,
+                             x: rect.left,
+                             y: rect.top,
+                             vy: 0,
+                             state: 'idle'
+                         });
+                     }
+                 }
+             }
         }
 
-        if (glyphs.length < 40) {
-            const fallback = getSeedCharacters();
-            const count = 120;
-            for (let i = 0; i < count; i++) {
-                glyphs.push({
-                    ch: fallback[Math.floor(Math.random() * fallback.length)],
-                    x: rect.left + Math.random() * rect.width,
-                    y: rect.top + Math.random() * rect.height,
-                    vy: (0.5 + Math.random() * 1.2) * screensaverSpeed
-                });
-            }
-        }
+        const style = window.getComputedStyle(terminal);
+        const fontSize = parseFloat(style.fontSize) || 16;
+        let lineHeight = parseFloat(style.lineHeight);
+        if (Number.isNaN(lineHeight)) lineHeight = fontSize * 1.2;
 
-        return { glyphs, rect, fontSize, lineHeight };
+        return { glyphs, fontSize, lineHeight };
     }
 
     function initMatrix() {
