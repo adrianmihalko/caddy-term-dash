@@ -2,6 +2,9 @@
 
 A futuristic, terminal-style dashboard for your Caddy reverse proxy services. It parses your `Caddyfile` on the fly and presents your services in a beautiful, retro CLI interface.
 
+![CleanShot 2026-02-06 at 20 23 20](https://github.com/user-attachments/assets/5cc66473-5a0c-4818-a0fd-f0ffd2d97113)
+
+
 ## Features
 
 *   **Live Caddyfile Parsing:** Automatically detects your services.
