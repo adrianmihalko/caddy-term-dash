@@ -318,7 +318,8 @@ document.addEventListener('DOMContentLoaded', () => {
             cols,
             seedChars: getSeedCharacters(),
             seedGlyphs,
-            phaseStart: performance.now()
+            phaseStart: performance.now(),
+            lastSeedAt: performance.now()
         };
     }
 
@@ -333,13 +334,23 @@ document.addEventListener('DOMContentLoaded', () => {
             ctx.fillStyle = '#00aa00';
             ctx.font = `${seedGlyphs.fontSize}px VT323, monospace`;
             const { glyphs, rect, lineHeight } = seedGlyphs;
+            let activeCount = 0;
             for (let i = 0; i < glyphs.length; i++) {
                 const g = glyphs[i];
+                if (g.dead) continue;
                 ctx.fillText(g.ch, g.x, g.y);
                 g.y += g.vy;
                 if (g.y > height + 20) {
-                    g.y = rect.top - Math.random() * lineHeight;
+                    g.dead = true;
+                } else {
+                    activeCount++;
                 }
+            }
+
+            // Once everything has fallen off, re-seed from current screen
+            if (activeCount === 0 && performance.now() - matrixState.lastSeedAt > 500) {
+                matrixState.seedGlyphs = buildSeedGlyphs(ctx);
+                matrixState.lastSeedAt = performance.now();
             }
         }
 
