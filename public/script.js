@@ -245,7 +245,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     ch,
                     x: rect.left + c * charWidth,
                     y: rect.top + (r + 1) * lineHeight,
-                    vy: 0.5 + Math.random() * 1.2
+                    vy: (0.5 + Math.random() * 1.2) * screensaverSpeed
                 });
             }
         }
@@ -258,7 +258,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     ch: fallback[Math.floor(Math.random() * fallback.length)],
                     x: rect.left + Math.random() * rect.width,
                     y: rect.top + Math.random() * rect.height,
-                    vy: 0.5 + Math.random() * 1.2
+                    vy: (0.5 + Math.random() * 1.2) * screensaverSpeed
                 });
             }
         }
@@ -278,13 +278,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
         const fontSize = Math.max(14, Math.min(20, Math.floor(window.innerWidth / 80)));
         const cols = Math.floor(window.innerWidth / fontSize);
-        const drops = [];
-        const speeds = [];
-        for (let i = 0; i < cols; i++) {
-            drops[i] = Math.random() * (window.innerHeight / fontSize);
-            speeds[i] = (0.6 + Math.random() * 0.9) * screensaverSpeed;
-        }
-
         const seedGlyphs = buildSeedGlyphs(ctx);
 
         matrixState = {
@@ -293,24 +286,20 @@ document.addEventListener('DOMContentLoaded', () => {
             height: window.innerHeight,
             fontSize,
             cols,
-            drops,
-            speeds,
             seedChars: getSeedCharacters(),
             seedGlyphs,
-            fullChars: Array.from('ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789@#$%&*+-/<>'),
             phaseStart: performance.now()
         };
     }
 
     function animateMatrix() {
         if (!screensaverActive || !matrixState) return;
-        const { ctx, width, height, fontSize, cols, drops, speeds, seedChars, seedGlyphs, fullChars, phaseStart } = matrixState;
-        const elapsed = performance.now() - phaseStart;
-        const inSeed = elapsed < screensaverSeedPhaseMs;
+        const { ctx, width, height, seedGlyphs } = matrixState;
 
         ctx.fillStyle = 'rgba(0, 0, 0, 0.2)';
         ctx.fillRect(0, 0, width, height);
-        if (inSeed && seedGlyphs && seedGlyphs.glyphs.length > 0) {
+
+        if (seedGlyphs && seedGlyphs.glyphs.length > 0) {
             ctx.fillStyle = '#00aa00';
             ctx.font = `${seedGlyphs.fontSize}px VT323, monospace`;
             const { glyphs, rect, lineHeight } = seedGlyphs;
@@ -321,21 +310,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (g.y > height + 20) {
                     g.y = rect.top - Math.random() * lineHeight;
                 }
-            }
-        } else {
-            const chars = fullChars;
-            ctx.fillStyle = '#00ff00';
-            ctx.font = `${fontSize}px VT323, monospace`;
-            for (let i = 0; i < cols; i++) {
-                const text = chars[Math.floor(Math.random() * chars.length)];
-                const x = i * fontSize;
-                const y = drops[i] * fontSize;
-                ctx.fillText(text, x, y);
-
-                if (y > height && Math.random() > 0.975) {
-                    drops[i] = 0;
-                }
-                drops[i] += speeds[i];
             }
         }
 
