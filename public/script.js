@@ -19,7 +19,6 @@ document.addEventListener('DOMContentLoaded', () => {
     const DEFAULT_SCREENSAVER_SEED_PHASE_MS = 5000;
     const DEFAULT_SCREENSAVER_SPEED = 1.0;
     const SCREENSAVER_STORAGE_KEY = 'screensaverTimeoutMs';
-    const SCREENSAVER_SEED_STORAGE_KEY = 'screensaverSeedPhaseMs';
     const SCREENSAVER_SPEED_STORAGE_KEY = 'screensaverSpeed';
 
     const screensaverCanvas = document.getElementById('screensaver');
@@ -131,7 +130,7 @@ document.addEventListener('DOMContentLoaded', () => {
         <span style="color:#fff">refresh</span>  - Reload Caddyfile from disk
         <span style="color:#fff">ping</span>     - Check status of all services
         <span style="color:#fff">privacy</span>  - Toggle privacy mode (hide domains)
-        <span style="color:#fff">screensaver</span> - Configure screensaver (timeout, seed, speed)
+        <span style="color:#fff">screensaver</span> - Set timeout or speed (e.g. screensaver 90 / screensaver speed 0.6)
         <span style="color:#fff">clear</span>    - Clear terminal history
         <span style="color:#fff">help / ?</span>  - Show this menu
         <br><br><span style="color:#fff">HOTKEYS:</span>
@@ -153,19 +152,6 @@ document.addEventListener('DOMContentLoaded', () => {
         screensaverTimeoutMs = Math.min(SCREENSAVER_MAX_MS, Math.max(SCREENSAVER_MIN_MS, ms));
         localStorage.setItem(SCREENSAVER_STORAGE_KEY, String(screensaverTimeoutMs));
         scheduleScreensaver();
-    }
-
-    function loadScreensaverSeedPhase() {
-        const raw = localStorage.getItem(SCREENSAVER_SEED_STORAGE_KEY);
-        const parsed = raw ? parseInt(raw, 10) : NaN;
-        if (!Number.isNaN(parsed)) {
-            screensaverSeedPhaseMs = Math.max(1000, parsed);
-        }
-    }
-
-    function saveScreensaverSeedPhase(ms) {
-        screensaverSeedPhaseMs = Math.max(1000, ms);
-        localStorage.setItem(SCREENSAVER_SEED_STORAGE_KEY, String(screensaverSeedPhaseMs));
     }
 
     function loadScreensaverSpeed() {
@@ -295,11 +281,8 @@ document.addEventListener('DOMContentLoaded', () => {
             const current = Math.round(screensaverTimeoutMs / 1000);
             printResult(
                 `<div class="label">Screensaver timeout: <span style="color:#fff">${current}s</span>` +
-                `<br>Seed phase: <span style="color:#fff">${Math.round(screensaverSeedPhaseMs / 1000)}s</span>` +
                 `<br>Speed: <span style="color:#fff">${screensaverSpeed.toFixed(2)}x</span>` +
-                `<br>Usage:` +
-                `<br>screensaver [seconds]` +
-                `<br>screensaver seed [seconds]` +
+                `<br>Usage: screensaver [seconds]` +
                 `<br>screensaver speed [multiplier]` +
                 `<br>screensaver now</div>`
             );
@@ -311,20 +294,10 @@ document.addEventListener('DOMContentLoaded', () => {
             printResult('<div class="label">Screensaver started. Move mouse or press a key to exit.</div>');
             return;
         }
-        if (arg === 'seed') {
-            const seconds = parseFloat(parts[2]);
-            if (!Number.isFinite(seconds) || seconds <= 0) {
-                printResult('<div class="error">Invalid seed phase. Use seconds, e.g. screensaver seed 10</div>');
-                return;
-            }
-            saveScreensaverSeedPhase(Math.round(seconds * 1000));
-            printResult(`<div class="label">Seed phase set to <span style="color:#fff">${Math.round(screensaverSeedPhaseMs / 1000)}s</span></div>`);
-            return;
-        }
         if (arg === 'speed') {
             const mult = parseFloat(parts[2]);
             if (!Number.isFinite(mult) || mult <= 0) {
-                printResult('<div class="error">Invalid speed. Use multiplier, e.g. screensaver speed 0.5</div>');
+                printResult('<div class="error">Invalid speed. Use multiplier, e.g. screensaver speed 0.6</div>');
                 return;
             }
             saveScreensaverSpeed(mult);
@@ -574,7 +547,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
     init();
     loadScreensaverTimeout();
-    loadScreensaverSeedPhase();
     loadScreensaverSpeed();
     scheduleScreensaver();
 });
