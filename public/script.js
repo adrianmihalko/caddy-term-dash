@@ -216,6 +216,56 @@ document.addEventListener('DOMContentLoaded', () => {
         return unique;
     }
 
+    function buildSeedGlyphs(ctx) {
+        const terminal = document.querySelector('.terminal');
+        if (!terminal) return null;
+
+        const rect = terminal.getBoundingClientRect();
+        const style = window.getComputedStyle(terminal);
+        const fontSize = parseFloat(style.fontSize) || 16;
+        let lineHeight = parseFloat(style.lineHeight);
+        if (Number.isNaN(lineHeight)) lineHeight = Math.round(fontSize * 1.2);
+
+        ctx.font = `${fontSize}px VT323, monospace`;
+        const charWidth = ctx.measureText('M').width || Math.round(fontSize * 0.6);
+        const cols = Math.floor(rect.width / charWidth);
+        const rows = Math.floor(rect.height / lineHeight);
+
+        const lines = terminal.innerText.split('\n');
+        const glyphs = [];
+        const maxRows = Math.min(lines.length, rows);
+
+        for (let r = 0; r < maxRows; r++) {
+            const line = lines[r] || '';
+            const maxCols = Math.min(line.length, cols);
+            for (let c = 0; c < maxCols; c++) {
+                const ch = line[c];
+                if (!/[\x21-\x7E]/.test(ch)) continue;
+                glyphs.push({
+                    ch,
+                    x: rect.left + c * charWidth,
+                    y: rect.top + (r + 1) * lineHeight,
+                    vy: 0.5 + Math.random() * 1.2
+                });
+            }
+        }
+
+        if (glyphs.length < 40) {
+            const fallback = getSeedCharacters();
+            const count = Math.max(80, cols * 4);
+            for (let i = 0; i < count; i++) {
+                glyphs.push({
+                    ch: fallback[Math.floor(Math.random() * fallback.length)],
+                    x: rect.left + Math.random() * rect.width,
+                    y: rect.top + Math.random() * rect.height,
+                    vy: 0.5 + Math.random() * 1.2
+                });
+            }
+        }
+
+        return { glyphs, rect, fontSize, lineHeight };
+    }
+
     function initMatrix() {
         const dpr = window.devicePixelRatio || 1;
         screensaverCanvas.width = Math.floor(window.innerWidth * dpr);
@@ -235,6 +285,8 @@ document.addEventListener('DOMContentLoaded', () => {
             speeds[i] = (0.6 + Math.random() * 0.9) * screensaverSpeed;
         }
 
+        const seedGlyphs = buildSeedGlyphs(ctx);
+
         matrixState = {
             ctx,
             width: window.innerWidth,
@@ -244,6 +296,7 @@ document.addEventListener('DOMContentLoaded', () => {
             drops,
             speeds,
             seedChars: getSeedCharacters(),
+            seedGlyphs,
             fullChars: Array.from('ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789@#$%&*+-/<>'),
             phaseStart: performance.now()
         };
@@ -251,29 +304,39 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function animateMatrix() {
         if (!screensaverActive || !matrixState) return;
-        const { ctx, width, height, fontSize, cols, drops, speeds, seedChars, fullChars, phaseStart } = matrixState;
+        const { ctx, width, height, fontSize, cols, drops, speeds, seedChars, seedGlyphs, fullChars, phaseStart } = matrixState;
         const elapsed = performance.now() - phaseStart;
         const inSeed = elapsed < screensaverSeedPhaseMs;
-        const chars = inSeed ? seedChars : fullChars;
 
         ctx.fillStyle = 'rgba(0, 0, 0, 0.2)';
         ctx.fillRect(0, 0, width, height);
-        ctx.fillStyle = inSeed ? '#00aa00' : '#00ff00';
-        ctx.font = `${fontSize}px VT323, monospace`;
-
-        for (let i = 0; i < cols; i++) {
-            if (inSeed && Math.random() < 0.35) {
-                continue;
+        if (inSeed && seedGlyphs && seedGlyphs.glyphs.length > 0) {
+            ctx.fillStyle = '#00aa00';
+            ctx.font = `${seedGlyphs.fontSize}px VT323, monospace`;
+            const { glyphs, rect, lineHeight } = seedGlyphs;
+            for (let i = 0; i < glyphs.length; i++) {
+                const g = glyphs[i];
+                ctx.fillText(g.ch, g.x, g.y);
+                g.y += g.vy;
+                if (g.y > height + 20) {
+                    g.y = rect.top - Math.random() * lineHeight;
+                }
             }
-            const text = chars[Math.floor(Math.random() * chars.length)];
-            const x = i * fontSize;
-            const y = drops[i] * fontSize;
-            ctx.fillText(text, x, y);
+        } else {
+            const chars = fullChars;
+            ctx.fillStyle = '#00ff00';
+            ctx.font = `${fontSize}px VT323, monospace`;
+            for (let i = 0; i < cols; i++) {
+                const text = chars[Math.floor(Math.random() * chars.length)];
+                const x = i * fontSize;
+                const y = drops[i] * fontSize;
+                ctx.fillText(text, x, y);
 
-            if (y > height && Math.random() > 0.975) {
-                drops[i] = 0;
+                if (y > height && Math.random() > 0.975) {
+                    drops[i] = 0;
+                }
+                drops[i] += speeds[i];
             }
-            drops[i] += speeds[i];
         }
 
         screensaverRaf = requestAnimationFrame(animateMatrix);
