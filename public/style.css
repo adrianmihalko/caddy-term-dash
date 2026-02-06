@@ -181,6 +181,16 @@ body.screensaver-active .terminal {
     pointer-events: none;
 }
 
+#screensaver-seed {
+    position: fixed;
+    visibility: hidden;
+    pointer-events: none;
+    white-space: pre;
+    z-index: -1;
+    top: 0;
+    left: 0;
+}
+
 /* Subtle CRT Flicker */
 @keyframes flicker {
     0% { opacity: 0.97; }

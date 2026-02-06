@@ -227,38 +227,62 @@ document.addEventListener('DOMContentLoaded', () => {
         if (Number.isNaN(lineHeight)) lineHeight = Math.round(fontSize * 1.2);
         lineHeight = Math.max(lineHeight, Math.round(fontSize * 1.1));
 
-        // Force a consistent monospace grid to avoid skew/tearing
-        const cellW = Math.round(fontSize * 0.6);
-        const cellH = Math.round(lineHeight);
-
         ctx.font = `${fontSize}px VT323, monospace`;
         ctx.textBaseline = 'top';
 
-        const cols = Math.max(1, Math.floor(rect.width / cellW));
-        const rows = Math.max(1, Math.floor(rect.height / cellH));
+        let seedLayer = document.getElementById('screensaver-seed');
+        if (!seedLayer) {
+            seedLayer = document.createElement('div');
+            seedLayer.id = 'screensaver-seed';
+            document.body.appendChild(seedLayer);
+        }
+
+        seedLayer.style.left = `${rect.left}px`;
+        seedLayer.style.top = `${rect.top}px`;
+        seedLayer.style.width = `${rect.width}px`;
+        seedLayer.style.height = `${rect.height}px`;
+        seedLayer.style.fontFamily = 'VT323, monospace';
+        seedLayer.style.fontSize = `${fontSize}px`;
+        seedLayer.style.lineHeight = `${lineHeight}px`;
 
         const lines = terminal.innerText.split('\n');
-        const glyphs = [];
-        const maxRows = Math.min(lines.length, rows);
-
-        for (let r = 0; r < maxRows; r++) {
+        const frag = document.createDocumentFragment();
+        for (let r = 0; r < lines.length; r++) {
             const line = lines[r] || '';
-            const maxCols = Math.min(line.length, cols);
-            for (let c = 0; c < maxCols; c++) {
+            for (let c = 0; c < line.length; c++) {
+                const span = document.createElement('span');
                 const ch = line[c];
-                if (!/[\x21-\x7E]/.test(ch)) continue;
-                glyphs.push({
-                    ch,
-                    x: rect.left + c * cellW,
-                    y: rect.top + r * cellH,
-                    vy: (0.5 + Math.random() * 1.2) * screensaverSpeed
-                });
+                span.textContent = ch === ' ' ? '\u00A0' : ch;
+                frag.appendChild(span);
             }
+            if (r < lines.length - 1) {
+                frag.appendChild(document.createElement('br'));
+            }
+        }
+        seedLayer.innerHTML = '';
+        seedLayer.appendChild(frag);
+
+        const glyphs = [];
+        const spans = seedLayer.querySelectorAll('span');
+        const maxGlyphs = 2500;
+        for (let i = 0; i < spans.length; i++) {
+            const span = spans[i];
+            const ch = span.textContent;
+            if (!/[\x21-\x7E]/.test(ch)) continue;
+            const r = span.getBoundingClientRect();
+            if (r.width === 0 || r.height === 0) continue;
+            glyphs.push({
+                ch,
+                x: r.left,
+                y: r.top,
+                vy: (0.5 + Math.random() * 1.2) * screensaverSpeed
+            });
+            if (glyphs.length >= maxGlyphs) break;
         }
 
         if (glyphs.length < 40) {
             const fallback = getSeedCharacters();
-            const count = Math.max(80, cols * 4);
+            const count = 120;
             for (let i = 0; i < count; i++) {
                 glyphs.push({
                     ch: fallback[Math.floor(Math.random() * fallback.length)],
@@ -269,7 +293,7 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         }
 
-        return { glyphs, rect, fontSize, lineHeight: cellH };
+        return { glyphs, rect, fontSize, lineHeight };
     }
 
     function initMatrix() {
