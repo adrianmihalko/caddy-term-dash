@@ -211,7 +211,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
         const unique = Array.from(new Set(chars));
         if (unique.length < 20) {
-            return Array.from('CADDYTERM0123456789@#$%&*');
+            return Array.from('CADDYTERM0123.:/-');
         }
         return unique;
     }
@@ -253,14 +253,18 @@ document.addEventListener('DOMContentLoaded', () => {
         if (!screensaverActive || !matrixState) return;
         const { ctx, width, height, fontSize, cols, drops, speeds, seedChars, fullChars, phaseStart } = matrixState;
         const elapsed = performance.now() - phaseStart;
-        const chars = elapsed < screensaverSeedPhaseMs ? seedChars : fullChars;
+        const inSeed = elapsed < screensaverSeedPhaseMs;
+        const chars = inSeed ? seedChars : fullChars;
 
         ctx.fillStyle = 'rgba(0, 0, 0, 0.2)';
         ctx.fillRect(0, 0, width, height);
-        ctx.fillStyle = '#00ff00';
+        ctx.fillStyle = inSeed ? '#00aa00' : '#00ff00';
         ctx.font = `${fontSize}px VT323, monospace`;
 
         for (let i = 0; i < cols; i++) {
+            if (inSeed && Math.random() < 0.35) {
+                continue;
+            }
             const text = chars[Math.floor(Math.random() * chars.length)];
             const x = i * fontSize;
             const y = drops[i] * fontSize;
