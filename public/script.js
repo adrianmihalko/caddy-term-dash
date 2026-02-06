@@ -17,7 +17,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const SCREENSAVER_MIN_MS = 5000;
     const SCREENSAVER_MAX_MS = 60 * 60 * 1000;
     const DEFAULT_SCREENSAVER_SEED_PHASE_MS = 5000;
-    const DEFAULT_SCREENSAVER_SPEED = 1.0;
+    const DEFAULT_SCREENSAVER_SPEED = 0.7;
     const SCREENSAVER_STORAGE_KEY = 'screensaverTimeoutMs';
     const SCREENSAVER_SPEED_STORAGE_KEY = 'screensaverSpeed';
 
