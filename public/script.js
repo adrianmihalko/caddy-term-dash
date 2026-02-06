@@ -222,14 +222,20 @@ document.addEventListener('DOMContentLoaded', () => {
 
         const rect = terminal.getBoundingClientRect();
         const style = window.getComputedStyle(terminal);
-        const fontSize = parseFloat(style.fontSize) || 16;
+        const fontSize = Math.max(12, parseFloat(style.fontSize) || 16);
         let lineHeight = parseFloat(style.lineHeight);
         if (Number.isNaN(lineHeight)) lineHeight = Math.round(fontSize * 1.2);
+        lineHeight = Math.max(lineHeight, Math.round(fontSize * 1.1));
+
+        // Force a consistent monospace grid to avoid skew/tearing
+        const cellW = Math.round(fontSize * 0.6);
+        const cellH = Math.round(lineHeight);
 
         ctx.font = `${fontSize}px VT323, monospace`;
-        const charWidth = ctx.measureText('M').width || Math.round(fontSize * 0.6);
-        const cols = Math.floor(rect.width / charWidth);
-        const rows = Math.floor(rect.height / lineHeight);
+        ctx.textBaseline = 'top';
+
+        const cols = Math.max(1, Math.floor(rect.width / cellW));
+        const rows = Math.max(1, Math.floor(rect.height / cellH));
 
         const lines = terminal.innerText.split('\n');
         const glyphs = [];
@@ -243,8 +249,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (!/[\x21-\x7E]/.test(ch)) continue;
                 glyphs.push({
                     ch,
-                    x: rect.left + c * charWidth,
-                    y: rect.top + (r + 1) * lineHeight,
+                    x: rect.left + c * cellW,
+                    y: rect.top + r * cellH,
                     vy: (0.5 + Math.random() * 1.2) * screensaverSpeed
                 });
             }
@@ -263,7 +269,7 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         }
 
-        return { glyphs, rect, fontSize, lineHeight };
+        return { glyphs, rect, fontSize, lineHeight: cellH };
     }
 
     function initMatrix() {
