@@ -1,0 +1,15 @@
+version: '3.8'
+
+services:
+  caddy-dash:
+    image: ghcr.io/adrianmihalko/caddy-term-dash:latest
+    container_name: caddy-dash
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    volumes:
+      # Mount your Caddyfile (Read-Only recommended)
+      - /etc/caddy/Caddyfile:/etc/caddy/Caddyfile:ro
+    environment:
+      # Tell the app where to find the mounted file
+      - CADDYFILE_PATH=/etc/caddy/Caddyfile
